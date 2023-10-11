@@ -1,0 +1,17 @@
+[discord]
+token = "YOUR_DISCORD_TOKEN"
+prefix = "YOUR_PREFIX"
+owners = [1234567890, 1234567891]
+guild = 1234567890
+edit_track_timespan = 60
+
+[api]
+address = "127.0.0.1"
+port = 8000
+
+[database]
+address = "127.0.0.1"
+port = 5432
+username = "YOUR_DB_USERNAME"
+password = "YOUR_DB_PASSWORD"
+database = "YOUR_DB_NAME"

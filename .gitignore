@@ -1,0 +1,6 @@
+/.vs
+/.vscode
+/config.toml
+/swimbotrs-bak.zip
+/Cargo.lock
+/target
