@@ -29,35 +29,28 @@ impl From<PostgresError> for DatabaseError {
 
 impl Reject for DatabaseError {}
 
+async fn construct_response(code: StatusCode, message: String) -> (models::DefaultResponse, StatusCode) {
+    (models::DefaultResponse {
+        status: code.as_str().to_string(),
+        message: message,
+    }, code)
+}
+
 pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
-    let code;
-    let message;
+    let mut response = construct_response(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error".to_string()).await;
 
     if err.is_not_found() {
-        code = StatusCode::NOT_FOUND;
-        message = "Not Found";
+        response = construct_response(StatusCode::NOT_FOUND, "Not Found".to_string()).await;
     } else if let Some(_) = err.find::<DiscordError>() {
         println!("Discord error encountered: {:?}", err);
-        code = StatusCode::INTERNAL_SERVER_ERROR;
-        message = "Internal Discord Error";
-    } else if let Some(_) = err.find::<DatabaseError>() {
+        response = construct_response(StatusCode::INTERNAL_SERVER_ERROR, "Discord error encountered".to_string()).await;
+    } else if let Some(e) = err.find::<DatabaseError>() {
         println!("Database error encountered: {:?}", err);
-        code = StatusCode::INTERNAL_SERVER_ERROR;
-        message = "Internal Database Error";
-    } else {
-        // Unhandled rejections are turned into 500 Internal Server Error responses.
-        println!("Error encountered: {:?}", err);
-        code = StatusCode::INTERNAL_SERVER_ERROR;
-        message = "Internal Server Error";
+        response = construct_response(StatusCode::EXPECTATION_FAILED, e.0.to_string()).await;
     }
 
-    let error_response = models::DefaultResponse {
-        status: code.as_str().to_string(),
-        message: message.to_string(),
-    };
-
     Ok(warp::reply::with_status(
-        warp::reply::json(&error_response),
-        code,
+        warp::reply::json(&response.0),
+        response.1,
     ))
 }

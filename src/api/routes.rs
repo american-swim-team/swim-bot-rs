@@ -5,7 +5,6 @@ use super::handlers;
 use super::models;
 
 pub fn check_steamid_route(state: AppState) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    println!("check_steamid_route");
     warp::path!("checksteamid")
         .and(warp::post())
         .and(warp::body::json::<models::CheckSteamid>())

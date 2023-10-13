@@ -25,14 +25,18 @@ impl Database {
     }
 
     pub async fn fetch_discordid(&self, steamid: i64) -> Result<u64, Error> {
-        let row = self.client.query_one(
+        match self.client.query_one(
             "SELECT discordid FROM steamids WHERE steamid = $1",
             &[&steamid],
-        ).await?;
-
-        let discordid: f64 = row.get(0);
-
-        Ok(discordid as u64)
+        ).await {
+            Ok(row) => {
+                let discordid: i64 = row.get(0);
+                Ok(discordid as u64)
+            },
+            Err(e) => {
+                Err(e)
+            }
+        }
     }
 
     //pub async fn insert_ids(&self, steamid: String, discordid: String) -> Result<(), Error> {
