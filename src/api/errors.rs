@@ -47,6 +47,14 @@ pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     } else if let Some(e) = err.find::<DatabaseError>() {
         println!("Database error encountered: {:?}", err);
         response = construct_response(StatusCode::EXPECTATION_FAILED, e.0.to_string()).await;
+    } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
+        response = construct_response(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed".to_string()).await;
+    } else if let Some(_) = err.find::<warp::filters::body::BodyDeserializeError>() {
+        response = construct_response(StatusCode::BAD_REQUEST, "Bad request".to_string()).await;
+    } else if let Some(_) = err.find::<warp::reject::UnsupportedMediaType>() {
+        response = construct_response(StatusCode::UNSUPPORTED_MEDIA_TYPE, "Unsupported media type".to_string()).await;
+    } else {
+        dbg!("Internal server error encountered: {:?}", err);
     }
 
     Ok(warp::reply::with_status(

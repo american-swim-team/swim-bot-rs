@@ -4,7 +4,7 @@ use super::errors::*;
 use serenity::model::id::RoleId;
 
 pub async fn check_steamid(data: models::CheckSteamid, state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
-    println!("Checking steamid: {}", data.steamid);
+    dbg!("Checking steamid: {}", data.steamid);
     let discordid: u64 = state.database.fetch_discordid(data.steamid).await.map_err(DatabaseError::from)?.into();
     let user_roles = state.discord.get_member(state.config.discord.guild, discordid).await.map_err(DiscordError::from)?.roles;
 

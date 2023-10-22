@@ -14,20 +14,10 @@ pub struct AppState {
     pub config: Config,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct SteamID {
-    pub steamid: u64,
-}
 #[derive(Debug, Deserialize)]
 pub struct CheckSteamid {
     pub roles: Vec<i64>,
     pub steamid: i64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct NotFoundResponse {
-    pub status: String,
-    pub message: String,
 }
 
 #[derive(Debug, Serialize)]
