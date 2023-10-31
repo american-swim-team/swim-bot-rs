@@ -11,11 +11,13 @@ pub async fn check_steamid(data: models::CheckSteamid, state: AppState) -> Resul
     let authorized = data.roles.iter().any(|role| user_roles.contains(&RoleId::from(*role as u64)));
 
     if authorized {
+        dbg!("Authorized");
         Ok(warp::reply::json(&models::DefaultResponse {
             status: "OK".to_string(),
             message: "Authorized".to_string(),
         }))
     } else {
+        dbg!("Not authorized");
         Ok(warp::reply::json(&models::DefaultResponse {
             status: "UNAUTHORIZED".to_string(),
             message: "Not authorized".to_string(),
