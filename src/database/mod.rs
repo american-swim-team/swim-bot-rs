@@ -39,12 +39,30 @@ impl Database {
         }
     }
 
-    //pub async fn insert_ids(&self, steamid: String, discordid: String) -> Result<(), Error> {
-    //    self.client.execute(
-    //        "INSERT INTO steamid (steamid, discordid) VALUES ($1, $2)",
-    //        &[&steamid, &discordid],
-    //    ).await?;
+    pub async fn insert_ids(&self, steamid: i64, discordid: i64) -> Result<(), Error> {
+        self.client.execute(
+            "INSERT INTO steamids (steamid, discordid) VALUES ($1, $2)
+            ON CONFLICT (discordid)
+            DO UPDATE SET steamid = EXCLUDED.steamid;
+            ",
+            &[&steamid, &discordid],
+        ).await?;
 
-    //    Ok(())
-    //}
+        Ok(())
+    }
+
+    pub async fn fetch_steamid(&self, discordid: i64) -> Result<i64, Error> {
+        match self.client.query_one(
+            "SELECT steamid FROM steamids WHERE discordid = $1",
+            &[&discordid],
+        ).await {
+            Ok(row) => {
+                let steamid: i64 = row.get(0);
+                Ok(steamid)
+            },
+            Err(e) => {
+                Err(e)
+            }
+        }
+    }
 }

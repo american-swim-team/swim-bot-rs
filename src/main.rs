@@ -11,7 +11,9 @@ use serde::Deserialize;
 
 use poise::serenity_prelude as serenity;
 
-pub struct Data {}
+pub struct Data {
+    pub database: Arc<database::Database>,
+}
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
@@ -49,7 +51,7 @@ async fn main() {
     // Setup the discord bot
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![discord::commands::ping()],
+            commands: vec![discord::commands::ping(), discord::commands::link(), discord::commands::steamid()],
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some(config.discord.prefix.clone()),
                 edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(config.discord.edit_track_timespan))),
@@ -100,7 +102,7 @@ async fn main() {
                 });
                 println!("API started on {}", address);
 
-                Ok(Data {})
+                Ok(Data {database})
             })
         });
 
