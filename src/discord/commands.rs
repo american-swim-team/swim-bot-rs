@@ -15,7 +15,7 @@ pub async fn link(ctx: Context<'_>, steamid: String) -> Result<(), Error> {
     let steamid = match steamid.parse::<i64>() {
         Ok(steamid) => steamid,
         Err(e) => {
-            ctx.reply(format!("Failed to parse steamid: {}", e)).await?;
+            ctx.send(|u| {u.content(format!("Failed to parse steamid: {}", e)).ephemeral(true)}).await?;
             return Ok(())
         }
     };
@@ -28,10 +28,10 @@ pub async fn link(ctx: Context<'_>, steamid: String) -> Result<(), Error> {
         }
     };
     if existing_discordid == 0 {
-        ctx.reply(format!("Linked steamid {} to discord user {}", steamid, discordid)).await?;
+        ctx.send(|u| {u.content(format!("Linked steamid: {}", steamid)).ephemeral(true)}).await?;
         database.insert_ids(steamid, discordid).await?;
     } else {
-        ctx.reply(format!("Replacing existing steamid with {}", steamid)).await?;
+        ctx.send(|u| {u.content(format!("Replacing existing steamid with: {}", steamid)).ephemeral(true)}).await?;
         database.insert_ids(steamid, discordid).await?;
     }    
     Ok(())
@@ -41,7 +41,8 @@ pub async fn link(ctx: Context<'_>, steamid: String) -> Result<(), Error> {
 #[poise::command(slash_command, prefix_command)]
 pub async fn steamid(ctx: Context<'_>) -> Result<(), Error> {
     let database = &ctx.data().database;
-    let discordid = ctx.author().id.0 as i64;
+    let author = ctx.author();
+    let discordid = author.id.0 as i64;
     let steamid = match database.fetch_steamid(discordid).await {
         Ok(steamid) => steamid,
         Err(e) => {
@@ -50,9 +51,20 @@ pub async fn steamid(ctx: Context<'_>) -> Result<(), Error> {
         }
     };
     if steamid == 0 {
-        ctx.reply(format!("No steamid linked to discord user {}", discordid)).await?;
+        ctx.send(|u| {u.content(format!("No steamid linked to discord user: {}", author.name)).ephemeral(true)}).await?;
     } else {
-        ctx.reply(format!("Steamid {} linked to discord user {}", steamid, discordid)).await?;
+        ctx.send(|u| {u.content(format!("Steamid {} linked to discord user {}", steamid, author.name)).ephemeral(true)}).await?;
     }    
+    Ok(())
+}
+
+/// if user is bot owner, removes all global commands
+#[poise::command(slash_command, prefix_command, hide_in_help, owners_only)]
+pub async fn remove_global_commands(ctx: Context<'_>) -> Result<(), Error> {
+    let http = &ctx.http();
+    let global_commands = http.get_global_application_commands().await?;
+    for command in global_commands {
+        http.delete_global_application_command(*command.id.as_u64()).await?;
+    }
     Ok(())
 }
