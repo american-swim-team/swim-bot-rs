@@ -1,4 +1,3 @@
-
 name: Docker
 on:
   push:
@@ -7,19 +6,22 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # The type of runner that the job will run on
+    runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2  # Checks-out your repository under $GITHUB_WORKSPACE
+    - uses: actions/checkout@v2
+
+    - name: Extract Tag Name
+      run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
     - name: Build Docker Image
-      run: docker build -t swim-bot-rs:{{ version }} .
+      run: docker build -t swim-bot-rs:${{ env.TAG }} .
 
     - name: Log in to DockerHub
-      uses: docker/login-action@v1
+      uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}  # Set in the repo's secrets
-        password: ${{ secrets.DOCKERHUB_PASSWORD }}  # Set in the repo's secrets
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
     - name: Push Image to DockerHub
-      run: docker push swim-bot-rs:{{ version }}
+      run: docker push swim-bot-rs:${{ env.TAG }}
