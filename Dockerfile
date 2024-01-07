@@ -1,7 +1,7 @@
 ###############################################################
 # BUILD COINTAINER
 ###############################################################
-FROM rust:1.67.1-buster as build
+FROM rust:1-buster as build
 WORKDIR /app
 ENV CARGO_TERM_COLOR=always
 

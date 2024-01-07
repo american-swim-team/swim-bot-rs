@@ -24,45 +24,18 @@ impl Database {
         Ok(Database { client })
     }
 
-    pub async fn fetch_discordid(&self, steamid: i64) -> Result<u64, Error> {
-        match self.client.query_one(
-            "SELECT discordid FROM steamids WHERE steamid = $1",
-            &[&steamid],
-        ).await {
-            Ok(row) => {
-                let discordid: i64 = row.get(0);
-                Ok(discordid as u64)
-            },
-            Err(e) => {
-                Err(e)
-            }
-        }
+    pub async fn query_one(&self, query: &str, params: &[&(dyn tokio_postgres::types::ToSql + Sync)]) -> Result<tokio_postgres::Row, Error> {
+        let row = self.client.query_one(query, params).await?;
+        Ok(row)
     }
 
-    pub async fn insert_ids(&self, steamid: i64, discordid: i64) -> Result<(), Error> {
-        self.client.execute(
-            "INSERT INTO steamids (steamid, discordid) VALUES ($1, $2)
-            ON CONFLICT (discordid)
-            DO UPDATE SET steamid = EXCLUDED.steamid;
-            ",
-            &[&steamid, &discordid],
-        ).await?;
+    pub async fn query(&self, query: &str, params: &[&(dyn tokio_postgres::types::ToSql + Sync)]) -> Result<Vec<tokio_postgres::Row>, Error> {
+        let rows = self.client.query(query, params).await?;
+        Ok(rows)
+    }
 
+    pub async fn execute(&self, query: &str, params: &[&(dyn tokio_postgres::types::ToSql + Sync)]) -> Result<(), Error> {
+        self.client.execute(query, params).await?;
         Ok(())
-    }
-
-    pub async fn fetch_steamid(&self, discordid: i64) -> Result<i64, Error> {
-        match self.client.query_one(
-            "SELECT steamid FROM steamids WHERE discordid = $1",
-            &[&discordid],
-        ).await {
-            Ok(row) => {
-                let steamid: i64 = row.get(0);
-                Ok(steamid)
-            },
-            Err(e) => {
-                Err(e)
-            }
-        }
     }
 }

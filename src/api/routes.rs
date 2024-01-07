@@ -18,6 +18,22 @@ pub fn heartbeat_route() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and_then(handlers::heartbeat)
 }
 
+pub fn cutup_route(state: AppState) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("fetch_cutup_score")
+        .and(warp::post())
+        .and(warp::body::json::<models::ScoreRequest>())
+        .and(with_state(state))
+        .and_then(handlers::fetch_cutup_score)
+}
+
+pub fn insert_cutup_route(state: AppState) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("insert_cutup_score")
+        .and(warp::post())
+        .and(warp::body::json::<models::InsertScoreRequest>())
+        .and(with_state(state))
+        .and_then(handlers::insert_cutup_score)
+}
+
 fn with_state(state: AppState) -> impl Filter<Extract = (AppState,), Error = warp::Rejection> + Clone {
     warp::any()
         .and_then(move || {

@@ -5,7 +5,6 @@ mod database;
 use std::sync::Arc;
 use std::fs;
 use std::process::exit;
-use std::collections::HashSet;
 use toml;
 
 use serde::Deserialize;
@@ -57,6 +56,7 @@ async fn main() {
                 edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(config.discord.edit_track_timespan))),
                 ..Default::default()
             },
+            commands: vec![discord::commands::register(), discord::commands::help(), discord::commands::ping(), discord::commands::link(), discord::commands::steamid(), discord::commands::score()],
             event_handler: |_ctx, event, _framework, _data| {
                 Box::pin(discord::event_handler::event_handler(_ctx, event, _framework, _data))
             },
@@ -70,13 +70,10 @@ async fn main() {
         })
         .token(config.discord.token.clone())
         .intents(serenity::GatewayIntents::all())
-        .setup(move |ctx, _ready, framework| {
+        .setup(move |ctx, _ready, _framework| {
             Box::pin(async move {
                 println!("Logged in as {}", _ready.user.name);
                 let address = config.api.address().clone();
-
-                // Register commands globally
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
 
                 // Setup database
                 let database = database::Database::new(config.database.clone()).await;
@@ -98,35 +95,6 @@ async fn main() {
                     config: config.clone(),
                 };
                 let routes = api::combined_routes(app_state); // Assuming app_state contains the necessary shared state
-                
-                // Setup commands
-                let commands = vec![discord::commands::ping(), discord::commands::link(), discord::commands::steamid()];
-                let current_command_names: HashSet<String> = commands.iter()
-                    .map(|cmd| cmd.name.to_string())
-                    .collect();
-
-                // Delete global commands that are not present in current setup
-                let global_commands = ctx.http.get_global_application_commands().await?;
-                for command in global_commands {
-                    if !current_command_names.contains(&command.name) {
-                        ctx.http.delete_global_application_command(*command.id.as_u64()).await?;
-                    }
-                }
-                // Delete guild-specific commands that are not present in current setup
-                let guild_id = poise::serenity_prelude::GuildId(config.discord.guild);
-                let guild_commands = ctx.http.get_guild_application_commands(*guild_id.as_u64()).await?;
-                for command in guild_commands {
-                    if !current_command_names.contains(&command.name) {
-                        ctx.http.delete_guild_application_command(*guild_id.as_u64(), *command.id.as_u64()).await?;
-                    }
-                }
-                match poise::builtins::register_in_guild(&ctx.http, &commands, guild_id).await {
-                    Ok(_) => println!("Registered commands in guild!"),
-                    Err(e) => {
-                        println!("Failed to register commands in guild: {}", e);
-                        exit(1);
-                    }
-                }
 
                 // Start web API
                 tokio::spawn(async move {

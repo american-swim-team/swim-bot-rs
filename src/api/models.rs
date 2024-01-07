@@ -4,8 +4,10 @@ use std::fmt;
 
 use crate::Config;
 use crate::database::Database;
-use serenity::http::client::Http;
+use serenity::http::Http;
 use warp::reject::Reject;
+
+use poise::serenity_prelude as serenity;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -18,6 +20,26 @@ pub struct AppState {
 pub struct CheckSteamid {
     pub roles: Vec<i64>,
     pub steamid: i64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ScoreRequest {
+    pub steamid: i64,
+    pub track: String,
+    pub car: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InsertScoreRequest {
+    pub steamid: i64,
+    pub track: String,
+    pub car: String,
+    pub score: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ScoreResponse {
+    pub data: i64,
 }
 
 #[derive(Debug, Serialize)]
