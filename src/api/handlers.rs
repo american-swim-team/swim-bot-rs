@@ -67,6 +67,13 @@ pub async fn fetch_cutup_score(data: models::ScoreRequest, state: AppState) -> R
 
 pub async fn insert_cutup_score(data: models::InsertScoreRequest, state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
     dbg!("Cutup highscore insert: {:?}", &data);
+
+    if &data.score > &9999999 {
+        return Ok(warp::reply::json(&models::DefaultResponse {
+            status: "ERROR".to_string(),
+            message: "Score too high".to_string(),
+        }))
+    }
     
     match state.database.execute(
         "INSERT INTO cutup (steamid, track, car, score)
