@@ -37,6 +37,16 @@ pub struct InsertScoreRequest {
     pub score: i64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UpdateDriverStatsRequest {
+    pub steamid: i64,
+    pub track: String,
+    pub time: i64,
+    pub avgspeed: i64,
+    pub collisions: i64,
+    pub distance: f64,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ScoreResponse {
     pub data: i64,

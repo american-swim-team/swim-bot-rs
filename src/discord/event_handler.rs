@@ -1,97 +1,122 @@
-use poise::Event;
-// use tokio_cron::{Scheduler, Job};
+use tokio::time::{sleep, Duration};
 use std::sync::Arc;
 
-use poise::serenity_prelude as serenity;
-
-use serenity::model::webhook::Webhook;
 use crate::{Data, Error};
-// use crate::database::Database;
+use poise::serenity_prelude as ser;
 
-// async fn leaderboards(ctx: &Arc<serenity::Context>, database: &Data) {
-//     let http = ctx.http;
-//     let database = &database.database;
-//     // fetch leaderboards from the database
-//     let leaderboards = match database.query("select title, webhookurl, dbquery from leaderboards", &[]).await {
-//         Ok(leaderboards) => leaderboards,
-//         Err(e) => {
-//             dbg!(e);
-//             return;
-//         }
-//     };
-
-//     for leaderboard in leaderboards {
-//         let title: String = leaderboard.get(0);
-//         let webhookurl: String = leaderboard.get(1);
-//         let dbquery: String = leaderboard.get(2);
-
-//         // setup webhook
-//         let webhook = match Webhook::from_url(&http, &webhookurl).await {
-//             Ok(webhook) => webhook,
-//             Err(e) => {
-//                 dbg!(e);
-//                 continue; // continue to the next leaderboard if webhook fetch fails
-//             }
-//         };
-
-//         let scores = match database.query(&dbquery, &[]).await {
-//             Ok(scores) => scores,
-//             Err(e) => {
-//                 dbg!(e);
-//                 return;
-//             }
-//         };
-
-//         let mut embeds: Vec<serenity::builder::CreateEmbed> = Vec::new();
-
-//         // create and add embeds for each score
-//         for (i, score) in scores.iter().enumerate() {
-//             let discordid: i64 = score.get(0);
-//             let score_value: i64 = score.get(1);
-
-//             // fetch discord user
-//             let user = match http.get_user(discordid as u64).await {
-//                 Ok(user) => user,
-//                 Err(e) => {
-//                     dbg!(e);
-//                     continue; // continue to the next score if user fetch fails
-//                 }
-//             };
-
-//             let embed = serenity::builder::CreateEmbed::default()
-//                 .title(format!("{}. {} - {}", i + 1, user.name, score_value))
-//                 .thumbnail(user.avatar_url().unwrap_or_default());
-
-//             embeds.push(embed);
-//         }
-
-//         // send the embeds to the webhook
-//         let builder = serenity::builder::ExecuteWebhook::default().content(format!("Leaderboard for {}", title)).embeds(embeds);
-//         match webhook.execute(&http, false, builder).await {
-//             Ok(_) => {},
-//             Err(e) => {
-//                 dbg!(e);
-//                 continue; // continue to the next leaderboard if webhook send fails
-//             }
-//         }
-//     }
-// }
-
-
-pub async fn event_handler(ctx: &serenity::client::Context, event: &Event<'_>, _framework: poise::FrameworkContext<'_, Data, Error>, data: &Data) -> Result<(), Error> {
+pub async fn event_handler<'a>(ctx: &poise::serenity_prelude::Context, event: &'a ser::FullEvent, data: &Data) -> Result<(), Error> {
     match event {
-        Event::Ready { data_about_bot } => {
+        ser::FullEvent::Ready { data_about_bot } => {
             println!("{} is connected!", data_about_bot.user.name);
 
-        //     let mut scheduler = Scheduler::utc();
+            let _data = data.clone();
+            let _http = Arc::clone(&ctx.http);
 
-        //     let ctx_clone = Arc::new(ctx.clone());
-        //     scheduler.add(Job::new("*/2 24 * * * *", move || {
-        //         leaderboards(&ctx_clone, data)
-        //     }));
+            tokio::spawn(async move {
+                let http = _http.clone();
+                let data_clone = _data.clone();
 
+                loop {
+                    // Your function to run every minute
+                    your_function(&http, &data_clone).await;
+
+                    // Sleep for 1 minute
+                    sleep(Duration::from_secs(60)).await;
+                }
+            });
         },
         _ => {}
     }
     Ok(())
+}
+
+async fn your_function(http: &Arc<poise::serenity_prelude::Http>, data: &Data) {
+    // Fetch leaderboards from database
+    let leaderboards: Vec<(String, i64, String)> = match data.database.query("SELECT * FROM leaderboards", &[]).await {
+        Ok(leaderboards) => leaderboards
+            .into_iter()
+            .map(|row| {
+                let title: String = row.get("title");
+                let channel_id: i64 = row.get("channel");
+                let db_query: String = row.get("query");
+                (title, channel_id, db_query)
+            })
+            .collect(),
+        Err(e) => {
+            dbg!(e);
+            return;
+        }
+    };
+
+    for (title, channel_id, db_query) in leaderboards {
+        let channel = match ser::ChannelId::from(channel_id as u64).to_channel(http).await {
+            Ok(channel) => channel.guild().unwrap(),
+            Err(e) => {
+                dbg!(e);
+                continue;
+            }
+        };
+
+        let scores: Vec<(i64, i64)> = match data.database.query(&db_query, &[]).await {
+            Ok(scores) => scores
+                .into_iter()
+                .map(|row| {
+                    let steamid: i64 = row.get("discordid");
+                    let score: i64 = row.get("score");
+                    (steamid, score)
+                })
+                .collect(),
+            Err(e) => {
+                dbg!(e);
+                continue;
+            }
+        };
+
+        let mut top_users = String::new();
+        let mut count = 1;
+
+        for (user, score) in scores.iter() {
+            match ser::GuildId::from(data.config.discord.guild).member(http, ser::UserId::from(*user as u64)).await {
+                Ok(member) => top_users.push_str(&format!("{}. {}: {}\n", count, member.user.name, score)),
+                Err(e) => {
+                    dbg!(e);
+                    top_users.push_str(&format!("{}. Unknown: {}\n", count, score));
+                    continue;
+                }
+            };
+            count += 1;
+        }
+
+        let mut messages = match channel.messages(http, ser::GetMessages::default().limit(1)).await {
+            Ok(messages) => messages,
+            Err(e) => {
+                dbg!(e);
+                continue;
+            }
+        };
+
+        if messages.len() < 1 {
+            let embed = ser::CreateEmbed::default()
+                .title(title)
+                .description(top_users)
+                .to_owned();
+
+            let msg = ser::CreateMessage::default()
+                .embeds(vec![embed]);
+
+            let _ = channel.send_message(http, msg).await;
+            continue;
+        } else {
+            let embed = ser::CreateEmbed::default()
+                .title(title)
+                .description(top_users)
+                .to_owned();
+
+            let msg = ser::EditMessage::default()
+                .embeds(vec![embed]);
+
+            let _ = messages.first_mut().unwrap().edit(http, msg).await;
+            continue;
+        }
+    }
 }

@@ -12,6 +12,7 @@ pub fn combined_routes(app_state: models::AppState) -> impl Filter<Extract = imp
     check_steamid_route(app_state.clone())
         .or(cutup_route(app_state.clone()))
         .or(insert_cutup_route(app_state.clone()))
+        .or(update_driver_stats_route(app_state.clone()))
         .or(heartbeat_route())
         .recover(errors::handle_rejection)
 }

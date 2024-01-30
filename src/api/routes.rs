@@ -34,6 +34,14 @@ pub fn insert_cutup_route(state: AppState) -> impl Filter<Extract = impl warp::R
         .and_then(handlers::insert_cutup_score)
 }
 
+pub fn update_driver_stats_route(state: AppState) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("update_driver_stats")
+        .and(warp::post())
+        .and(warp::body::json::<models::UpdateDriverStatsRequest>())
+        .and(with_state(state))
+        .and_then(handlers::update_driver_stats)
+}
+
 fn with_state(state: AppState) -> impl Filter<Extract = (AppState,), Error = warp::Rejection> + Clone {
     warp::any()
         .and_then(move || {

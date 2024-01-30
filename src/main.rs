@@ -11,8 +11,10 @@ use serde::Deserialize;
 
 use poise::serenity_prelude as serenity;
 
+#[derive(Debug, Clone)]
 pub struct Data {
     pub database: Arc<database::Database>,
+    pub config: Config,
 }
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
@@ -48,17 +50,19 @@ async fn main() {
         }
     };
 
+    let config_clone = config.clone();
+
     // Setup the discord bot
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some(config.discord.prefix.clone()),
-                edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(config.discord.edit_track_timespan))),
+                // edit_tracker: Some(poise::EditTracker::for_timespan(std::time::Duration::from_secs(config.discord.edit_track_timespan))),
                 ..Default::default()
             },
             commands: vec![discord::commands::register(), discord::commands::help(), discord::commands::ping(), discord::commands::link(), discord::commands::steamid(), discord::commands::score()],
             event_handler: |_ctx, event, _framework, _data| {
-                Box::pin(discord::event_handler::event_handler(_ctx, event, _framework, _data))
+                Box::pin(discord::event_handler::event_handler(_ctx, event, _data))
             },
             pre_command: |ctx| Box::pin(async move {
                 println!("Executing command {}...", ctx.command().qualified_name);
@@ -68,15 +72,13 @@ async fn main() {
             }),
             ..Default::default()
         })
-        .token(config.discord.token.clone())
-        .intents(serenity::GatewayIntents::all())
         .setup(move |ctx, _ready, _framework| {
             Box::pin(async move {
                 println!("Logged in as {}", _ready.user.name);
-                let address = config.api.address().clone();
+                let address = config_clone.api.address().clone();
 
                 // Setup database
-                let database = database::Database::new(config.database.clone()).await;
+                let database = database::Database::new(config_clone.database.clone()).await;
                 let database = match database {
                     Ok(d) => {
                         println!("Connected to database!");
@@ -92,7 +94,7 @@ async fn main() {
                 let app_state = api::models::AppState {
                     discord: ctx.http.clone(),
                     database: database.clone(),
-                    config: config.clone(),
+                    config: config_clone.clone(),
                 };
                 let routes = api::combined_routes(app_state); // Assuming app_state contains the necessary shared state
 
@@ -102,12 +104,19 @@ async fn main() {
                 });
                 println!("API started on {}", address);
 
-                Ok(Data {database})
+                Ok(Data {database, config: config_clone.clone()})
             })
-        });
+        }).build();
 
+    let token = &config.discord.token.clone();
+    let intents = serenity::GatewayIntents::all();
+
+    let client = serenity::ClientBuilder::new(token, intents)
+        .framework(framework)
+        .await;
+        
     // Let's run
     println!("Starting discord bot!");
-    framework.run().await.expect("Failed to start discord bot!");
+    client.unwrap().start().await.unwrap();
 
 }

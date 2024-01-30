@@ -37,6 +37,7 @@ async fn construct_response(code: StatusCode, message: String) -> (models::Defau
 }
 
 pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
+    dbg!("Handling rejection: {:?}", &err);
     let mut response = construct_response(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error".to_string()).await;
 
     if err.is_not_found() {
