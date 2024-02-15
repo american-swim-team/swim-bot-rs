@@ -77,6 +77,9 @@ async fn main() {
                 println!("Logged in as {}", _ready.user.name);
                 let address = config_clone.api.address().clone();
 
+                // Fetch all guild members
+                ctx.shard.chunk_guild(serenity::GuildId::new(config_clone.discord.guild), None, false, serenity::ChunkGuildFilter::None, None);
+
                 // Setup database
                 let database = database::Database::new(config_clone.database.clone()).await;
                 let database = match database {
@@ -92,7 +95,8 @@ async fn main() {
 
                 // Setup API
                 let app_state = api::models::AppState {
-                    discord: ctx.http.clone(),
+                    http: ctx.http.clone(),
+                    cache: ctx.cache.clone(),
                     database: database.clone(),
                     config: config_clone.clone(),
                 };

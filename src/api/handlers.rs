@@ -11,7 +11,7 @@ pub async fn check_steamid(data: models::CheckSteamid, state: AppState) -> Resul
     ).await {
         Ok(row) => {
             let discordid: i64 = row.get(0);
-            let user_roles: Vec<serenity::model::prelude::RoleId> = match state.discord.get_member(state.config.discord.guild.into(), serenity::UserId::from(discordid as u64)).await {
+            let user_roles: Vec<serenity::model::prelude::RoleId> = match state.http.get_member(state.config.discord.guild.into(), serenity::UserId::from(discordid as u64)).await {
                 Ok(member) => member.roles,
                 Err(e) => {
                     dbg!(e);

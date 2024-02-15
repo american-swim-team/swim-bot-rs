@@ -5,13 +5,15 @@ use std::fmt;
 use crate::Config;
 use crate::database::Database;
 use serenity::http::Http;
+use serenity::Cache;
 use warp::reject::Reject;
 
 use poise::serenity_prelude as serenity;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub discord: Arc<Http>,
+    pub http: Arc<Http>,
+    pub cache: Arc<Cache>,
     pub database: Arc<Database>,
     pub config: Config,
 }
