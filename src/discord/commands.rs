@@ -4,14 +4,14 @@ use poise::command;
 
 use poise::reply;
 
-async fn reply(message: String) -> reply::CreateReply {
-    reply::CreateReply::default()
-        .embed(poise::serenity_prelude::CreateEmbed::default()
-            .title("swim> bot")
-            .description(message)
-            .color(serenity::Colour::from_rgb(255, 255, 255))
-        )
-        .ephemeral(true)
+async fn reply(ctx: &Context<'_>, message: String) -> Result<(), Error> {
+    Ok(_ = ctx.send(reply::CreateReply::default()
+            .embed(poise::serenity_prelude::CreateEmbed::default()
+                .title("swim> bot")
+                .description(message)
+                .color(serenity::Colour::from_rgb(255, 255, 255))
+            ).ephemeral(true)
+        ).await?)
 }
 
 /// Responds with pong
@@ -52,7 +52,7 @@ pub async fn link(ctx: Context<'_>, steamid: i64) -> Result<(), Error> {
     let existing_discordid = match database.query_one("SELECT discordid FROM steamids WHERE steamid = $1", &[&discordid]).await {
         Ok(discordid) => if discordid.len() > 0 { discordid.get(0) } else { 0 },
         Err(e) => {
-            dbg!(e);
+            log::error!("Failed to fetch discordid: {}", e);
             0
         }
     };
@@ -64,9 +64,9 @@ pub async fn link(ctx: Context<'_>, steamid: i64) -> Result<(), Error> {
         &[&steamid, &discordid],
     ).await?;
     if existing_discordid == 0 {
-        ctx.send(reply(format!("Linked steamid: {}", steamid)).await).await?;
+        reply(&ctx, format!("Linked steamid: {}", steamid)).await?;
     } else {
-        ctx.send(reply(format!("Replacing existing steamid with: {}", steamid)).await).await?;
+        reply(&ctx, format!("Replacing existing steamid with: {}", steamid)).await?;
     }    
     Ok(())
 }
@@ -79,7 +79,7 @@ pub async fn steamid(ctx: Context<'_>, user: Option<serenity::model::user::User>
         Some(user) => if ctx.author().member.as_ref().map_or(false, |m| m.permissions.map_or(false, poise::serenity_prelude::Permissions::administrator)) {
             user
         } else {
-            ctx.send(reply("You don't have permission to view other users steamids.".to_string()).await).await?;
+            reply(&ctx, "You don't have permission to view other users steamids.".to_string()).await?;
             return Ok(())
         },
         None => ctx.author().clone(),
@@ -88,14 +88,14 @@ pub async fn steamid(ctx: Context<'_>, user: Option<serenity::model::user::User>
     let steamid: i64 = match database.query_one("SELECT steamid FROM steamids WHERE discordid = $1", &[&discordid]).await {
         Ok(steamid) => if steamid.len() > 0 { steamid.get(0) } else { 0 },
         Err(e) => {
-            dbg!(e);
+            log::error!("Failed to fetch steamid: {}", e);
             0
         }
     };
     if steamid == 0 {
-        ctx.send(reply(format!("No steamid linked to discord user: {}", user.name)).await).await?;
+        reply(&ctx, format!("No steamid linked to discord user: {}", user.name)).await?;
     } else {
-        ctx.send(reply(format!("Steamid {} linked to discord user {}", steamid, user.name)).await).await?;
+        reply(&ctx, format!("Steamid {} linked to discord user {}", steamid, user.name)).await?;
     }    
     Ok(())
 }
@@ -114,12 +114,12 @@ pub async fn score(ctx: Context<'_>, user: Option<serenity::model::user::User>) 
             steamid
         },
         Err(e) => {
-            dbg!(e);
+            log::error!("Failed to fetch steamid: {}", e);
             0
         }
     };
     if steamid == 0 {
-        ctx.send(reply("There's no steamid linked to this discord user.".to_string()).await).await?;
+        reply(&ctx, "There's no steamid linked to this discord user.".to_string()).await?;
         return Ok(())
     }
     let (score, car, track) = match database.query_one("SELECT score, car, track FROM cutup WHERE steamid = $1 ORDER BY score DESC LIMIT 1", &[&steamid]).await {
@@ -130,7 +130,7 @@ pub async fn score(ctx: Context<'_>, user: Option<serenity::model::user::User>) 
             (score, car, track)
         },
         Err(_e) => {
-            ctx.send(reply(format!("No highscore found for steamid: {}", steamid)).await).await?;
+            reply(&ctx, format!("No highscore found for steamid: {}", steamid)).await?;
             return Ok(())
         }
     };
@@ -140,10 +140,10 @@ pub async fn score(ctx: Context<'_>, user: Option<serenity::model::user::User>) 
             count + 1
         },
         Err(e) => {
-            dbg!(e);
+            log::error!("Failed to fetch placing: {}", e);
             0
         }
     };
-    ctx.send(reply(format!("Your highscore is {} on {} with {}. You are currently in {} place.", score, track, car, placing)).await).await?;
+    reply(&ctx, format!("Your highscore is {} on {} with {}. You are currently in {} place.", score, track, car, placing)).await?;
     Ok(())
 }

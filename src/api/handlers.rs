@@ -3,7 +3,7 @@ use super::models;
 use poise::serenity_prelude as serenity;
 
 pub async fn check_steamid(data: models::CheckSteamid, state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
-    dbg!("Checking steamid {} for roles {}", &data.steamid, &data.roles);
+    log::info!("Checking steamid: {:?}", &data);
 
     match state.database.query_one(
         "SELECT discordid FROM steamids WHERE steamid = $1",
@@ -12,9 +12,9 @@ pub async fn check_steamid(data: models::CheckSteamid, state: AppState) -> Resul
         Ok(row) => {
             let discordid: i64 = row.get(0);
             let user_roles: Vec<serenity::model::prelude::RoleId> = match state.http.get_member(state.config.discord.guild.into(), serenity::UserId::from(discordid as u64)).await {
-                Ok(member) => member.roles,
+                Ok(member) => member.roles.to_vec(),
                 Err(e) => {
-                    dbg!(e);
+                    log::error!("Failed to fetch member roles: {}", e);
                     return Ok(warp::reply::json(&models::DefaultResponse {
                         status: "UNAUTHORIZED".to_string(),
                         message: "Not authorized".to_string(),
@@ -34,7 +34,7 @@ pub async fn check_steamid(data: models::CheckSteamid, state: AppState) -> Resul
             }
         },
         Err(e) => {
-            dbg!(e);
+            log::error!("Failed to fetch discordid: {}", e);
             return Ok(warp::reply::json(&models::DefaultResponse {
                 status: "UNAUTHORIZED".to_string(),
                 message: "Not authorized".to_string(),
@@ -44,7 +44,7 @@ pub async fn check_steamid(data: models::CheckSteamid, state: AppState) -> Resul
 }
 
 pub async fn fetch_cutup_score(data: models::ScoreRequest, state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
-    dbg!("Cutup highscore request: {:?}", &data);
+    log::info!("Cutup highscore request: {:?}", &data);
     
     match state.database.query_one(
         "SELECT score FROM cutup WHERE steamid = $1 AND track = $2 ORDER BY score DESC LIMIT 1",
@@ -57,7 +57,7 @@ pub async fn fetch_cutup_score(data: models::ScoreRequest, state: AppState) -> R
             }))
         },
         Err(e) => {
-            dbg!(e);
+            log::error!("Failed to fetch highscore: {}", e);
             return Ok(warp::reply::json(&models::ScoreResponse {
                 data: 0,
             }))
@@ -66,7 +66,7 @@ pub async fn fetch_cutup_score(data: models::ScoreRequest, state: AppState) -> R
 }
 
 pub async fn insert_cutup_score(data: models::InsertScoreRequest, state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
-    dbg!("Cutup highscore insert: {:?}", &data);
+    log::info!("Cutup highscore insert: {:?}", &data);
 
     if &data.score > &9999999 {
         return Ok(warp::reply::json(&models::DefaultResponse {
@@ -90,7 +90,7 @@ pub async fn insert_cutup_score(data: models::InsertScoreRequest, state: AppStat
             }))
         },
         Err(e) => {
-            dbg!(e);
+            log::error!("Failed to insert highscore: {}", e);
             return Ok(warp::reply::json(&models::DefaultResponse {
                 status: "ERROR".to_string(),
                 message: "Failed to insert".to_string(),
@@ -100,7 +100,7 @@ pub async fn insert_cutup_score(data: models::InsertScoreRequest, state: AppStat
 }
 
 pub async fn update_driver_stats(data: models::UpdateDriverStatsRequest, state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
-    dbg!("Driver stats update: {:?}", &data);
+    log::info!("Driver stats update: {:?}", &data);
 
     let result = state.database.execute(
         "INSERT INTO driver_stats (steamid, track, collisions, distance, avgspeed, total_time)
@@ -121,7 +121,7 @@ pub async fn update_driver_stats(data: models::UpdateDriverStatsRequest, state: 
             message: "Driver stats updated".to_string(),
         })),
         Err(e) => {
-            dbg!(e);
+            log::error!("Failed to update driver stats: {}", e);
             Ok(warp::reply::json(&models::DefaultResponse {
                 status: "ERROR".to_string(),
                 message: "Failed to update driver stats".to_string(),

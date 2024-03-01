@@ -11,7 +11,7 @@ impl Steamid {
         match database.insert_ids(self.steamid, self.discordid).await {
             Ok(_) => Ok(()),
             Err(e) => {
-                dbg!(e);
+                log::error!("Failed to insert steamid: {}", e);
                 Err(Error::DatabaseError)
             }
         }
@@ -21,7 +21,7 @@ impl Steamid {
         match database.fetch_steamid(self.discordid).await {
             Ok(steamid) => Ok(steamid),
             Err(e) => {
-                dbg!(e);
+                log::error!("Failed to fetch steamid: {}", e);
                 Err(Error::DatabaseError)
             }
         }
